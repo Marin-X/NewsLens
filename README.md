@@ -2,6 +2,12 @@
 
 FinBERT sentiment as an equity alpha factor across the S&P 500.
 
+**Live demo:** https://newslens-marinx.streamlit.app
+
+**Repo:** https://github.com/Marin-X/NewsLens
+
+---
+
 ## Headline finding
 
 Across a 90-day window of S&P 500 company news (~155k articles, scored with `ProsusAI/finbert`), the volume-weighted sentiment signal at a 21-day forward horizon produced:
