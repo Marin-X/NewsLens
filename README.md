@@ -47,7 +47,7 @@ python src/prices.py
 python src/returns.py
 python src/backtest.py
 
-streamlit run Home.py
+streamlit run app.py
 ```
 
 ## Repo layout
