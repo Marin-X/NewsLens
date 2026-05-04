@@ -312,6 +312,7 @@ st.markdown(
             border-radius: 8px;
         }
     }
+    [data-testid="stHeaderActionElements"] { display: none !important; }
     </style>
     """,
     unsafe_allow_html=True,
