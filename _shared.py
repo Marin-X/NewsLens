@@ -161,6 +161,7 @@ hr {
     div[data-testid="stMetric"] label { font-size: 0.65rem !important; }
     [data-testid="stPlotlyChart"] { border-radius: 8px; }
 }
+[data-testid="stHeaderActionElements"] { display: none !important; }
 </style>
 """
 
