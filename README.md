@@ -33,24 +33,26 @@ Python · pandas · numpy · scipy · plotly · streamlit · transformers · tor
 git clone https://github.com/Marin-X/NewsLens.git
 cd NewsLens
 python -m venv .venv
-.venv\Scripts\Activate.ps1     # Windows
+.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 
 cp .env.example .env
 # Add your Finnhub API key to .env
 
-python src/universe.py         # build S&P 500 universe
-python src/ingest.py           # 90-day news pull (~30 min)
-python src/sentiment.py        # FinBERT scoring (~2 hr CPU)
-python src/signals.py          # 5 variant constructions
-python src/prices.py           # yfinance OHLCV (~16 sec)
-python src/returns.py          # forward returns
-python src/backtest.py         # IC, decile, long-short
+python src/universe.py
+python src/ingest.py
+python src/sentiment.py
+python src/signals.py
+python src/prices.py
+python src/returns.py
+python src/backtest.py
 
 streamlit run app.py
 ```
 
 ## Repo layout
+
+```
 NewsLens/
 ├── app.py                  # Streamlit entry
 ├── pages/                  # 4 dashboard pages
@@ -66,6 +68,7 @@ NewsLens/
 ├── data/                   # cached parquet + sqlite (gitignored)
 ├── requirements.txt
 └── README.md
+```
 
 ## Caveats
 
