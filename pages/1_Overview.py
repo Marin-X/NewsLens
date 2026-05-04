@@ -10,11 +10,8 @@ import streamlit as st
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
-
-from db import get_conn  # noqa: E402
-
-# Inject shared style
 sys.path.insert(0, str(ROOT / "pages"))
+
 from _shared import (  # noqa: E402
     PAGE_CSS, EMERALD, EMERALD_2, NEG_RED, NEUTRAL, plotly_layout,
 )
@@ -27,51 +24,45 @@ st.set_page_config(
 st.markdown(PAGE_CSS, unsafe_allow_html=True)
 
 
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=3600)
 def load_overview_data() -> dict:
-    cutoff = (pd.Timestamp.utcnow() - pd.Timedelta(days=95)).strftime("%Y-%m-%d")
-    with get_conn() as conn:
-        n_articles = conn.execute("SELECT COUNT(*) FROM articles").fetchone()[0]
-        n_scored = conn.execute("SELECT COUNT(*) FROM sentiment").fetchone()[0]
-        n_tickers = conn.execute("SELECT COUNT(DISTINCT ticker) FROM articles").fetchone()[0]
-        date_range = conn.execute(
-            "SELECT MIN(published), MAX(published) FROM articles WHERE published > ?",
-            (cutoff,),
-        ).fetchone()
-        daily = pd.read_sql_query(
-            """
-            SELECT date(a.published) AS day, s.label, COUNT(*) AS n
-            FROM articles a JOIN sentiment s ON s.article_id = a.id
-            WHERE a.published > ?
-            GROUP BY day, s.label ORDER BY day
-            """,
-            conn, params=(cutoff,), parse_dates=["day"],
-        )
-        sources = pd.read_sql_query(
-            """
-            SELECT source, COUNT(*) AS n FROM articles
-            WHERE source <> '' GROUP BY source ORDER BY n DESC LIMIT 10
-            """,
-            conn,
-        )
-        sector_dist = pd.read_sql_query(
-            """
-            SELECT a.ticker, s.label, COUNT(*) AS n
-            FROM articles a JOIN sentiment s ON s.article_id = a.id
-            GROUP BY a.ticker, s.label
-            """,
-            conn,
-        )
+    """Aggregate stats and daily sentiment time series from parquet."""
+    cutoff = pd.Timestamp.utcnow() - pd.Timedelta(days=95)
+
+    articles = pd.read_parquet(ROOT / "data" / "articles.parquet")
+    articles["published"] = pd.to_datetime(articles["published"], utc=True)
+    articles = articles[articles["published"] > cutoff].copy()
 
     universe = pd.read_parquet(ROOT / "data" / "universe.parquet")[["ticker", "sector"]]
-    sector_dist = sector_dist.merge(universe, on="ticker", how="left")
+
+    n_articles = len(articles)
+    n_scored = articles["label"].notna().sum()
+    n_tickers = articles["ticker"].nunique()
+    date_min = articles["published"].min()
+    date_max = articles["published"].max()
+
+    articles["day"] = articles["published"].dt.tz_convert("UTC").dt.normalize().dt.tz_localize(None)
+    daily = articles.groupby(["day", "label"]).size().reset_index(name="n")
+
+    sources = (
+        articles[articles["source"].fillna("") != ""]
+        .groupby("source").size().reset_index(name="n")
+        .sort_values("n", ascending=False).head(10)
+    )
+
+    sector_dist = articles.merge(universe, on="ticker", how="left")
     sector_dist["sector"] = sector_dist["sector"].fillna("Unknown")
-    sector_agg = sector_dist.groupby(["sector", "label"])["n"].sum().reset_index()
+    sector_agg = sector_dist.groupby(["sector", "label"]).size().reset_index(name="n")
 
     return {
-        "n_articles": n_articles, "n_scored": n_scored, "n_tickers": n_tickers,
-        "date_min": date_range[0], "date_max": date_range[1],
-        "daily": daily, "sources": sources, "sector_agg": sector_agg,
+        "n_articles": int(n_articles),
+        "n_scored": int(n_scored),
+        "n_tickers": int(n_tickers),
+        "date_min": date_min,
+        "date_max": date_max,
+        "daily": daily,
+        "sources": sources,
+        "sector_agg": sector_agg,
     }
 
 

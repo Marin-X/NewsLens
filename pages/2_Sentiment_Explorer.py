@@ -13,7 +13,6 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "pages"))
 
-from db import get_conn  # noqa: E402
 from _shared import (  # noqa: E402
     PAGE_CSS, EMERALD, EMERALD_2, NEG_RED, GOLD, plotly_layout,
 )
@@ -26,40 +25,41 @@ st.set_page_config(
 st.markdown(PAGE_CSS, unsafe_allow_html=True)
 
 
-@st.cache_data(ttl=600)
+@st.cache_data(ttl=3600)
+def load_articles() -> pd.DataFrame:
+    cutoff = pd.Timestamp.utcnow() - pd.Timedelta(days=95)
+    df = pd.read_parquet(ROOT / "data" / "articles.parquet")
+    df["published"] = pd.to_datetime(df["published"], utc=True)
+    df = df[df["published"] > cutoff].copy()
+    return df
+
+
+@st.cache_data(ttl=3600)
+def load_prices() -> pd.DataFrame:
+    df = pd.read_parquet(ROOT / "data" / "prices.parquet")
+    df["date"] = pd.to_datetime(df["date"])
+    return df
+
+
+@st.cache_data(ttl=3600)
 def list_tickers() -> list[str]:
-    cutoff = (pd.Timestamp.utcnow() - pd.Timedelta(days=95)).strftime("%Y-%m-%d")
-    with get_conn() as conn:
-        rows = conn.execute(
-            """
-            SELECT a.ticker, COUNT(*) AS n
-            FROM articles a JOIN sentiment s ON s.article_id = a.id
-            WHERE a.published > ? GROUP BY a.ticker
-            HAVING n > 0 ORDER BY n DESC
-            """,
-            (cutoff,),
-        ).fetchall()
-    return [r[0] for r in rows]
+    df = load_articles()
+    return df["ticker"].value_counts().index.tolist()
 
 
-@st.cache_data(ttl=600)
-def load_ticker_data(ticker: str) -> dict:
-    cutoff = (pd.Timestamp.utcnow() - pd.Timedelta(days=95)).strftime("%Y-%m-%d")
-    with get_conn() as conn:
-        articles = pd.read_sql_query(
-            """
-            SELECT a.published, a.headline, a.source, a.url,
-                   s.label, s.compound, s.score_pos, s.score_neu, s.score_neg
-            FROM articles a JOIN sentiment s ON s.article_id = a.id
-            WHERE a.ticker = ? AND a.published > ?
-            ORDER BY a.published DESC
-            """,
-            conn, params=(ticker, cutoff), parse_dates=["published"],
-        )
-    prices = pd.read_parquet(ROOT / "data" / "prices.parquet")
-    prices = prices[prices["ticker"] == ticker].copy()
-    prices["date"] = pd.to_datetime(prices["date"])
-    prices = prices[prices["date"] >= pd.Timestamp(cutoff)]
+def filter_ticker(ticker: str) -> dict:
+    cutoff = pd.Timestamp.utcnow() - pd.Timedelta(days=95)
+    articles = load_articles()
+    articles = (
+        articles[articles["ticker"] == ticker]
+        .sort_values("published", ascending=False)
+        .copy()
+    )
+
+    prices = load_prices()
+    prices = prices[(prices["ticker"] == ticker)
+                    & (prices["date"] >= pd.Timestamp(cutoff.date()))].copy()
+
     return {"articles": articles, "prices": prices}
 
 
@@ -75,7 +75,7 @@ tickers = list_tickers()
 default_idx = tickers.index("AAPL") if "AAPL" in tickers else 0
 ticker = st.selectbox("Ticker", tickers, index=default_idx)
 
-data = load_ticker_data(ticker)
+data = filter_ticker(ticker)
 articles = data["articles"]
 prices = data["prices"]
 

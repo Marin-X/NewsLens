@@ -10,11 +10,10 @@ __pycache__/
 .env.local
 .streamlit/secrets.toml
 
-# Data caches (large, regenerable)
+# Data: ignore the SQLite (regeneratable, large) but commit parquets (smaller, needed for cloud deploy)
 data/*.db
 data/*.db-shm
 data/*.db-wal
-data/*.parquet
 data/*.csv
 
 # Logs
