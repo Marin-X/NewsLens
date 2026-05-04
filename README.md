@@ -6,6 +6,8 @@ FinBERT sentiment as an equity alpha factor across the S&P 500.
 
 **Repo:** https://github.com/Marin-X/NewsLens
 
+![NewsLens dashboard](screenshots/05_backtest.png)
+
 ---
 
 ## Headline finding
@@ -32,6 +34,38 @@ Shorter horizons (1d, 5d) showed *negative* IC at high turnover, consistent with
 ## Stack
 
 Python · pandas · numpy · scipy · plotly · streamlit · transformers · torch · finnhub · yfinance · sqlite3 · parquet
+
+## Dashboard
+
+The Streamlit app exposes four pages, each rendered from cached parquet outputs of the pipeline.
+
+### Home
+
+![Home page](screenshots/01_home.png)
+
+### Overview
+
+Pipeline summary, ingestion volume, and aggregate sentiment distribution by sector and source.
+
+![Overview page](screenshots/02_overview.png)
+
+### Sentiment Explorer
+
+Per-ticker article feed with FinBERT scores and price overlay.
+
+![Sentiment Explorer page](screenshots/03_sentiment_explorer.png)
+
+### Signal Construction
+
+Five variant constructions of the FinBERT-derived signal across daily, weekly, and monthly horizons; cross-sectional distribution and persistence (autocorrelation) per variant.
+
+![Signal Construction page](screenshots/04_signal_construction.png)
+
+### Backtest
+
+Information coefficient, decile portfolios, and long-short evaluation across 5 signal variants × 3 horizons × 2 execution conventions (close-to-close, open-to-open).
+
+![Backtest page](screenshots/05_backtest.png)
 
 ## Local run
 
@@ -72,6 +106,8 @@ NewsLens/
 │   ├── backtest.py         # IC / decile / LS
 │   └── db.py               # SQLite schema
 ├── data/                   # cached parquet + sqlite (gitignored)
+├── screenshots/            # dashboard screenshots for README
+├── dashboard.png           # hero image for portfolio card
 ├── requirements.txt
 └── README.md
 ```
